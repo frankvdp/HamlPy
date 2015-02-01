@@ -40,6 +40,7 @@ def get_haml_loader(loader):
             # os.path.splitext always returns a period at the start of extension
             extension = _extension.lstrip('.')
 
+            # HACK, should just create new template loader or configuration to try and resolve html to hamlpy's
             if extension in ['html']:
                 extension = 'hamlpy'
 
