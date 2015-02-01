@@ -1,6 +1,6 @@
 import re
 import sys
-from StringIO import StringIO
+from io import BytesIO as StringIO
 
 from .elements import Element
 
