@@ -2,7 +2,7 @@ import re
 import sys
 from StringIO import StringIO
 
-from elements import Element
+from .elements import Element
 
 try:
     from pygments import highlight

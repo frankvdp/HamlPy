@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from nodes import RootNode, FilterNode, HamlNode, create_node
+from .nodes import RootNode, FilterNode, HamlNode, create_node
 from optparse import OptionParser
 import sys
 
