@@ -9,13 +9,13 @@ try:
     from pygments.formatters import HtmlFormatter
     from pygments.lexers import guess_lexer
     _pygments_available = True
-except ImportError, e:
+except ImportError as e:
     _pygments_available = False
 
 try:
     from markdown import markdown
     _markdown_available = True
-except ImportError, e:
+except ImportError as e:
     _markdown_available = False
 
 class NotAvailableError(Exception):
