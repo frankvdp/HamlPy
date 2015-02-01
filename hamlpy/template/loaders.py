@@ -28,6 +28,9 @@ def get_haml_loader(loader):
         baseclass = loader.Loader
     else:
         class baseclass(object):
+            def __call__(self, template_name, template_dirs=None):
+                return self.load_template_source(template_name, template_dirs)
+
             def load_template_source(self, *args, **kwargs):
                 return loader.load_template_source(*args, **kwargs)
 
