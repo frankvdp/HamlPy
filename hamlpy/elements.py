@@ -1,6 +1,8 @@
 import re
 import sys
 
+PY3 = sys.version > '3'
+
 class Element(object):
     """contains the pieces of an element and can populate itself from haml element text"""
 
@@ -136,7 +138,8 @@ class Element(object):
                                                  "\nPlease use inline variables ={...} instead.\n-------------------\n")
 
                             attributes_dict[k] = v
-                            v = v.decode('utf-8')
+                            if not PY3:
+                                v = v.decode('utf-8')
                             self.attributes += "%s=%s " % (k, self.attr_wrap(self._escape_attribute_quotes(v)))
                 self.attributes = self.attributes.strip()
             except Exception as e:
