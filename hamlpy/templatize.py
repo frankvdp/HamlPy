@@ -11,16 +11,20 @@ try:
 except ImportError as e:
     _django_available = False
 
-import hamlpy
+from . import hamlpy
 import os
 
 
 def decorate_templatize(func):
     def templatize(src, origin=None):
-        #if the template has no origin file then do not attempt to parse it with haml
+        # if the template has no origin file then do not attempt to parse it
+        # with haml
         if origin:
-            #if the template has a source file, then only parse it if it is haml
-            if os.path.splitext(origin)[1].lower() in ['.'+x.lower() for x in hamlpy.VALID_EXTENSIONS]:
+            # if the template has a source file, then only parse it if it is
+            # haml
+            if (
+                os.path.splitext(origin)[1].lower() in
+                    ['.' + x.lower() for x in hamlpy.VALID_EXTENSIONS]):
                 hamlParser = hamlpy.Compiler()
                 html = hamlParser.process(src.decode('utf-8'))
                 src = html.encode('utf-8')

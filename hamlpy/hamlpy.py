@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-from .nodes import RootNode, FilterNode, HamlNode, create_node
+from .nodes import RootNode, HamlNode, create_node
 from optparse import OptionParser
-import sys
 
-VALID_EXTENSIONS=['haml', 'hamlpy']
+VALID_EXTENSIONS = ['haml', 'hamlpy']
+
 
 class Compiler:
 
@@ -20,19 +20,21 @@ class Compiler:
         root = RootNode(**self.options_dict)
         line_iter = iter(haml_lines)
 
-        haml_node=None
+        haml_node = None
         for line_number, line in enumerate(line_iter):
             node_lines = line
 
             if not root.parent_of(HamlNode(line)).inside_filter_node():
                 if line.count('{') - line.count('}') == 1:
-                    start_multiline=line_number # For exception handling
+                    start_multiline = line_number  # For exception handling
 
                     while line.count('{') - line.count('}') != -1:
                         try:
                             line = line_iter.next()
                         except StopIteration:
-                            raise Exception('No closing brace found for multi-line HAML beginning at line %s' % (start_multiline+1))
+                            raise Exception(
+                                'No closing brace found for multi-line HAML '
+                                'beginning at line %s' % (start_multiline + 1))
                         node_lines += line
 
             # Blank lines
@@ -48,8 +50,8 @@ class Compiler:
         else:
             return root.render()
 
+
 def convert_files():
-    import sys
     import codecs
 
     parser = OptionParser()
@@ -69,7 +71,8 @@ def convert_files():
         print("Specify the input file as the first argument.")
     else:
         infile = args[0]
-        haml_lines = codecs.open(infile, 'r', encoding='utf-8').read().splitlines()
+        haml_lines = codecs.open(
+            infile, 'r', encoding='utf-8').read().splitlines()
 
         compiler = Compiler(options.__dict__)
         output = compiler.process_lines(haml_lines)

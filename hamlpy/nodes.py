@@ -9,6 +9,7 @@ try:
     from pygments.formatters import HtmlFormatter
     from pygments.lexers import guess_lexer
     _pygments_available = True
+
 except ImportError as e:
     _pygments_available = False
 
@@ -17,6 +18,7 @@ try:
     _markdown_available = True
 except ImportError as e:
     _markdown_available = False
+
 
 class NotAvailableError(Exception):
     pass
@@ -50,71 +52,96 @@ ELEMENT_CHARACTERS = (ELEMENT, ID, CLASS)
 
 HAML_ESCAPE = '\\'
 
+
 def create_node(haml_line):
+
     stripped_line = haml_line.strip()
 
     if len(stripped_line) == 0:
         return None
 
-    if re.match(INLINE_VARIABLE, stripped_line) or re.match(ESCAPED_INLINE_VARIABLE, stripped_line):
+    if (re.match(
+            INLINE_VARIABLE, stripped_line) or
+            re.match(ESCAPED_INLINE_VARIABLE, stripped_line)):
+
         return PlaintextNode(haml_line)
 
     if stripped_line[0] == HAML_ESCAPE:
+
         return PlaintextNode(haml_line)
 
     if stripped_line.startswith(DOCTYPE):
+
         return DoctypeNode(haml_line)
 
     if stripped_line[0] in ELEMENT_CHARACTERS:
+
         return ElementNode(haml_line)
 
     if stripped_line[0:len(CONDITIONAL_COMMENT)] == CONDITIONAL_COMMENT:
+
         return ConditionalCommentNode(haml_line)
 
     if stripped_line[0] == HTML_COMMENT:
+
         return CommentNode(haml_line)
 
     for comment_prefix in HAML_COMMENTS:
+
         if stripped_line.startswith(comment_prefix):
+
             return HamlCommentNode(haml_line)
 
     if stripped_line[0] == VARIABLE:
+
         return VariableNode(haml_line)
 
     if stripped_line[0] == TAG:
+
         return TagNode(haml_line)
 
     if stripped_line == JAVASCRIPT_FILTER:
+
         return JavascriptFilterNode(haml_line)
 
     if stripped_line in COFFEESCRIPT_FILTERS:
+
         return CoffeeScriptFilterNode(haml_line)
 
     if stripped_line == CSS_FILTER:
+
         return CssFilterNode(haml_line)
 
     if stripped_line == STYLUS_FILTER:
+
         return StylusFilterNode(haml_line)
 
     if stripped_line == PLAIN_FILTER:
+
         return PlainFilterNode(haml_line)
 
     if stripped_line == PYTHON_FILTER:
+
         return PythonFilterNode(haml_line)
 
     if stripped_line == CDATA_FILTER:
+
         return CDataFilterNode(haml_line)
 
     if stripped_line == PYGMENTS_FILTER:
         return PygmentsFilterNode(haml_line)
 
     if stripped_line == MARKDOWN_FILTER:
+
         return MarkdownFilterNode(haml_line)
 
     return PlaintextNode(haml_line)
 
+
 class TreeNode(object):
+
     ''' Generic parent/child tree class'''
+
     def __init__(self):
         self.parent = None
         self.children = []
@@ -122,18 +149,22 @@ class TreeNode(object):
     def left_sibling(self):
         siblings = self.parent.children
         index = siblings.index(self)
+
         return siblings[index - 1] if index > 0 else None
 
     def right_sibling(self):
         siblings = self.parent.children
         index = siblings.index(self)
+
         return siblings[index + 1] if index < len(siblings) - 1 else None
 
     def add_child(self, child):
         child.parent = self
         self.children.append(child)
 
+
 class RootNode(TreeNode):
+
     def __init__(self, attr_wrapper="'"):
         TreeNode.__init__(self)
         self.indentation = -2
@@ -143,7 +174,8 @@ class RootNode(TreeNode):
         self.before = ''
         # Rendered text at end of node, e.g. "\n</p>"
         self.after = ''
-        # Indicates that a node does not render anything (for whitespace removal)
+        # Indicates that a node does not render anything (for whitespace
+        # removal)
         self.empty_node = False
 
         # Options
@@ -203,8 +235,12 @@ class RootNode(TreeNode):
             self.add_child(node)
 
     def _should_go_inside_last_node(self, node):
-        return len(self.children) > 0 and (node.indentation > self.children[-1].indentation
-            or (node.indentation == self.children[-1].indentation and self.children[-1].should_contain(node)))
+
+        return self.children and (
+            node.indentation > self.children[-1].indentation or
+            (node.indentation == self.children[-1].indentation and
+                self.children[-1].should_contain(node))
+        )
 
     def should_contain(self, node):
         return False
@@ -223,7 +259,9 @@ class RootNode(TreeNode):
     def __repr__(self):
         return '(%s)' % (self.__class__)
 
+
 class HamlNode(RootNode):
+
     def __init__(self, haml):
         RootNode.__init__(self)
         self.haml = haml.strip()
@@ -237,10 +275,15 @@ class HamlNode(RootNode):
         return content
 
     def __repr__(self):
-        return '(%s in=%d, nl=%d: %s)' % (self.__class__, self.indentation, self.newlines, self.haml)
+
+        return '(%s in=%d, nl=%d: %s)' % (
+            self.__class__, self.indentation, self.newlines, self.haml)
+
 
 class PlaintextNode(HamlNode):
+
     '''Node that is not modified or processed when rendering'''
+
     def _render(self):
         text = self.replace_inline_variables(self.haml)
         # Remove escape character unless inside filter node
@@ -254,8 +297,11 @@ class PlaintextNode(HamlNode):
             self.after = self.render_newlines()
         self._render_children()
 
+
 class ElementNode(HamlNode):
+
     '''Node which represents a HTML tag'''
+
     def __init__(self, haml):
         HamlNode.__init__(self, haml)
         self.django_variable = False
@@ -271,11 +317,14 @@ class ElementNode(HamlNode):
         '''Render opening tag and inline content'''
         start = ["%s<%s" % (self.spaces, element.tag)]
         if element.id:
-            start.append(" id=%s" % self.element.attr_wrap(self.replace_inline_variables(element.id)))
+            start.append(" id=%s" % self.element.attr_wrap(
+                self.replace_inline_variables(element.id)))
         if element.classes:
-            start.append(" class=%s" % self.element.attr_wrap(self.replace_inline_variables(element.classes)))
+            start.append(" class=%s" % self.element.attr_wrap(
+                self.replace_inline_variables(element.classes)))
         if element.attributes:
-            start.append(' ' + self.replace_inline_variables(element.attributes))
+            start.append(
+                ' ' + self.replace_inline_variables(element.attributes))
 
         content = self._render_inline_content(self.element.inline_content)
 
@@ -311,7 +360,8 @@ class ElementNode(HamlNode):
 
             if self.children:
                 node = self
-                # If node renders nothing, do removal on its first child instead
+                # If node renders nothing, do removal on its first child
+                # instead
                 if node.children[0].empty_node == True:
                     node = node.children[0]
                 if node.children:
@@ -349,7 +399,9 @@ class ElementNode(HamlNode):
         super(ElementNode, self)._post_render()
 
     def _render_inline_content(self, inline_content):
-        if inline_content == None or len(inline_content) == 0:
+
+        if inline_content is None or not inline_content:
+
             return None
 
         if self.django_variable:
@@ -358,7 +410,9 @@ class ElementNode(HamlNode):
         else:
             return self.replace_inline_variables(inline_content)
 
+
 class CommentNode(HamlNode):
+
     def _render(self):
         self.after = "-->\n"
         if self.children:
@@ -367,20 +421,25 @@ class CommentNode(HamlNode):
         else:
             self.before = "<!-- %s " % (self.haml.lstrip(HTML_COMMENT).strip())
 
+
 class ConditionalCommentNode(HamlNode):
+
     def _render(self):
-        conditional = self.haml[1: self.haml.index(']') + 1 ]
+        conditional = self.haml[1: self.haml.index(']') + 1]
 
         if self.children:
             self.before = "<!--%s>\n" % (conditional)
         else:
-            content = self.haml[len(CONDITIONAL_COMMENT) + len(conditional) - 1:]
+            content = self.haml[
+                len(CONDITIONAL_COMMENT) + len(conditional) - 1:]
             self.before = "<!--%s>%s" % (conditional, content)
 
         self.after = "<![endif]-->\n"
         self._render_children()
 
+
 class DoctypeNode(HamlNode):
+
     def _render(self):
         doctype = self.haml.lstrip(DOCTYPE).strip()
 
@@ -393,11 +452,18 @@ class DoctypeNode(HamlNode):
             )
         else:
             types = {
-                "": '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">',
-                "Strict": '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">',
-                "Frameset": '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-frameset.dtd">',
+                "": ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 '
+                     'Transitional//EN" "http://www.w3.org/TR/xhtml1/'
+                     'DTD/xhtml1-transitional.dtd">'),
+                "Strict": ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 '
+                           'Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/'
+                           'xhtml1-strict.dtd">'),
+                "Frameset": ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 '
+                             'Frameset//EN" "http://www.w3.org/TR/xhtml1/DTD/'
+                             'xhtml1-frameset.dtd">'),
                 "5": '<!DOCTYPE html>',
-                "1.1": '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'
+                "1.1": ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" '
+                        '"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">')
             }
 
             if doctype in types:
@@ -405,48 +471,56 @@ class DoctypeNode(HamlNode):
 
         self.after = self.render_newlines()
 
+
 class HamlCommentNode(HamlNode):
+
     def _render(self):
         self.after = self.render_newlines()[1:]
 
     def _post_render(self):
         pass
 
+
 class VariableNode(ElementNode):
+
     def __init__(self, haml):
         ElementNode.__init__(self, haml)
         self.django_variable = True
 
     def _render(self):
         tag_content = self.haml.lstrip(VARIABLE)
-        self.before = "%s%s" % (self.spaces, self._render_inline_content(tag_content))
+        self.before = "%s%s" % (
+            self.spaces, self._render_inline_content(tag_content))
         self.after = self.render_newlines()
 
     def _post_render(self):
         pass
 
+
 class TagNode(HamlNode):
-    self_closing = {'for':'endfor',
-                    'if':'endif',
-                    'ifchanged':'endifchanged',
-                    'ifequal':'endifequal',
-                    'ifnotequal':'endifnotequal',
-                    'block':'endblock',
-                    'filter':'endfilter',
-                    'autoescape':'endautoescape',
-                    'with':'endwith',
-                    'blocktrans': 'endblocktrans',
-                    'spaceless': 'endspaceless',
-                    'comment': 'endcomment',
-                    'cache': 'endcache',
-                    'localize': 'endlocalize',
-                    'compress': 'endcompress'}
-    may_contain = {'if':['else', 'elif'],
-                   'ifchanged':'else',
-                   'ifequal':'else',
-                   'ifnotequal':'else',
-                   'for':'empty',
-                   'with':'with'}
+    self_closing = {
+        'for': 'endfor',
+        'if': 'endif',
+        'ifchanged': 'endifchanged',
+        'ifequal': 'endifequal',
+        'ifnotequal': 'endifnotequal',
+        'block': 'endblock',
+        'filter': 'endfilter',
+        'autoescape': 'endautoescape',
+        'with': 'endwith',
+        'blocktrans': 'endblocktrans',
+        'spaceless': 'endspaceless',
+        'comment': 'endcomment',
+        'cache': 'endcache',
+        'localize': 'endlocalize',
+        'compress': 'endcompress'}
+    may_contain = {
+        'if': ['else', 'elif'],
+        'ifchanged': 'else',
+        'ifequal': 'else',
+        'ifnotequal': 'else',
+        'for': 'empty',
+        'with': 'with'}
 
     def __init__(self, haml):
         HamlNode.__init__(self, haml)
@@ -454,13 +528,17 @@ class TagNode(HamlNode):
         self.tag_name = self.tag_statement.split(' ')[0]
 
         if (self.tag_name in self.self_closing.values()):
-            raise TypeError("Do not close your Django tags manually.  It will be done for you.")
+            raise TypeError(
+                "Do not close your Django tags manually.  "
+                "It will be done for you.")
 
     def _render(self):
         self.before = "%s{%% %s %%}" % (self.spaces, self.tag_statement)
         if (self.tag_name in self.self_closing.keys()):
             self.before += self.render_newlines()
-            self.after = '%s{%% %s %%}%s' % (self.spaces, self.self_closing[self.tag_name], self.render_newlines())
+            self.after = '%s{%% %s %%}%s' % (
+                self.spaces, self.self_closing[self.tag_name],
+                self.render_newlines())
         else:
             if self.children:
                 self.before += self.render_newlines()
@@ -469,17 +547,19 @@ class TagNode(HamlNode):
         self._render_children()
 
     def should_contain(self, node):
-        return isinstance(node, TagNode) and node.tag_name in self.may_contain.get(self.tag_name, '')
+        return (isinstance(node, TagNode) and
+                node.tag_name in self.may_contain.get(self.tag_name, ''))
 
 
 class FilterNode(HamlNode):
+
     def add_node(self, node):
         self.add_child(node)
 
     def inside_filter_node(self):
         return True
 
-    def _render_children_as_plain_text(self, remove_indentation = True):
+    def _render_children_as_plain_text(self, remove_indentation=True):
         if self.children:
             initial_indentation = len(self.children[0].spaces)
         for child in self.children:
@@ -492,11 +572,13 @@ class FilterNode(HamlNode):
             child.after = child.render_newlines()
 
     def _post_render(self):
-        # Don't post-render children of filter nodes as we don't want them to be interpreted as HAML
+        # Don't post-render children of filter nodes as we don't want them to
+        # be interpreted as HAML
         pass
 
 
 class PlainFilterNode(FilterNode):
+
     def __init__(self, haml):
         FilterNode.__init__(self, haml)
         self.empty_node = True
@@ -506,12 +588,15 @@ class PlainFilterNode(FilterNode):
             first_indentation = self.children[0].indentation
         self._render_children_as_plain_text()
 
+
 class PythonFilterNode(FilterNode):
+
     def _render(self):
         if self.children:
             self.before = self.render_newlines()[1:]
             indent_offset = len(self.children[0].spaces)
-            code = "\n".join([node.raw_haml[indent_offset:] for node in self.children]) + '\n'
+            code = "\n".join([node.raw_haml[indent_offset:]
+                              for node in self.children]) + '\n'
             compiled_code = compile(code, "", "exec")
 
             buffer = StringIO()
@@ -519,7 +604,8 @@ class PythonFilterNode(FilterNode):
             try:
                 exec(compiled_code)
             except Exception as e:
-                # Change exception message to let developer know that exception comes from
+                # Change exception message to let developer
+                # know that exception comes from
                 # a PythonFilterNode
                 if e.args:
                     args = list(e.args)
@@ -533,49 +619,69 @@ class PythonFilterNode(FilterNode):
         else:
             self.after = self.render_newlines()
 
+
 class JavascriptFilterNode(FilterNode):
+
     def _render(self):
-        self.before = '<script type=%(attr_wrapper)stext/javascript%(attr_wrapper)s>\n// <![CDATA[%(new_lines)s' % {
-            'attr_wrapper': self.attr_wrapper,
-            'new_lines': self.render_newlines(),
+        self.before = (
+            '<script type=%(attr_wrapper)stext/javascript%(attr_wrapper)s>\n/'
+            '/ <![CDATA[%(new_lines)s') % {
+                'attr_wrapper': self.attr_wrapper,
+                'new_lines': self.render_newlines(),
         }
         self.after = '// ]]>\n</script>\n'
-        self._render_children_as_plain_text(remove_indentation = False)
+        self._render_children_as_plain_text(remove_indentation=False)
+
 
 class CoffeeScriptFilterNode(FilterNode):
+
     def _render(self):
-        self.before = '<script type=%(attr_wrapper)stext/coffeescript%(attr_wrapper)s>\n#<![CDATA[%(new_lines)s' % {
-            'attr_wrapper': self.attr_wrapper,
-            'new_lines': self.render_newlines(),
+        self.before = (
+            '<script type=%(attr_wrapper)stext/coffeescript%(attr_wrapper)s>'
+            '\n#<![CDATA[%(new_lines)s') % {
+                'attr_wrapper': self.attr_wrapper,
+                'new_lines': self.render_newlines(),
         }
         self.after = '#]]>\n</script>\n'
-        self._render_children_as_plain_text(remove_indentation = False)
+        self._render_children_as_plain_text(remove_indentation=False)
+
 
 class CssFilterNode(FilterNode):
+
     def _render(self):
-        self.before = '<style type=%(attr_wrapper)stext/css%(attr_wrapper)s>\n/*<![CDATA[*/%(new_lines)s' % {
-            'attr_wrapper': self.attr_wrapper,
-            'new_lines': self.render_newlines(),
+        self.before = (
+            '<style type=%(attr_wrapper)stext/css%(attr_wrapper)s>\n/*'
+            '<![CDATA[*/%(new_lines)s') % {
+                'attr_wrapper': self.attr_wrapper,
+                'new_lines': self.render_newlines(),
         }
         self.after = '/*]]>*/\n</style>\n'
-        self._render_children_as_plain_text(remove_indentation = False)
+        self._render_children_as_plain_text(remove_indentation=False)
+
 
 class StylusFilterNode(FilterNode):
+
     def _render(self):
-        self.before = '<style type=%(attr_wrapper)stext/stylus%(attr_wrapper)s>\n/*<![CDATA[*/%(new_lines)s' % {
-            'attr_wrapper': self.attr_wrapper,
-            'new_lines': self.render_newlines(),
+        self.before = (
+            '<style type=%(attr_wrapper)stext/stylus%(attr_wrapper)s>\n/*'
+            '<![CDATA[*/%(new_lines)s') % {
+                'attr_wrapper': self.attr_wrapper,
+                'new_lines': self.render_newlines(),
         }
         self.after = '/*]]>*/\n</style>\n'
         self._render_children_as_plain_text()
 
+
 class CDataFilterNode(FilterNode):
+
     def _render(self):
         self.before = self.spaces + '<![CDATA[%s' % (self.render_newlines())
         self.after = self.spaces + ']]>\n'
-        self._render_children_as_plain_text(remove_indentation = False)
+        self._render_children_as_plain_text(remove_indentation=False)
+
 
 class PygmentsFilterNode(FilterNode):
+
     def _render(self):
         if self.children:
             if not _pygments_available:
@@ -583,12 +689,17 @@ class PygmentsFilterNode(FilterNode):
 
             self.before = self.render_newlines()
             indent_offset = len(self.children[0].spaces)
-            text = ''.join(''.join([c.spaces[indent_offset:], c.haml, c.render_newlines()]) for c in self.children)
-            self.before += highlight(text, guess_lexer(self.haml), HtmlFormatter())
+            text = ''.join(''.join(
+                [c.spaces[indent_offset:],
+                 c.haml, c.render_newlines()]) for c in self.children)
+            self.before += highlight(text,
+                                     guess_lexer(self.haml), HtmlFormatter())
         else:
             self.after = self.render_newlines()
 
+
 class MarkdownFilterNode(FilterNode):
+
     def _render(self):
         if self.children:
             if not _markdown_available:
@@ -600,7 +711,8 @@ class MarkdownFilterNode(FilterNode):
                 haml = c.raw_haml.lstrip()
                 if haml[-1] == '\n':
                     haml = haml[:-1]
-                lines.append(c.spaces[indent_offset:] + haml + c.render_newlines())
-            self.before += markdown( ''.join(lines))
+                lines.append(
+                    c.spaces[indent_offset:] + haml + c.render_newlines())
+            self.before += markdown(''.join(lines))
         else:
             self.after = self.render_newlines()

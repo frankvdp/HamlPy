@@ -4,14 +4,16 @@ try:
     from django.template import TemplateDoesNotExist
     from django.template.loaders import filesystem, app_directories
     _django_available = True
+
 except ImportError as e:
+
     class TemplateDoesNotExist(Exception):
         pass
 
     _django_available = False
 
-from hamlpy import hamlpy
-from hamlpy.template.utils import get_django_template_loaders
+from ..hamlpy import hamlpy
+from ..hamlpy.template.utils import get_django_template_loaders
 
 
 # Get options from Django settings
@@ -24,10 +26,15 @@ if _django_available:
 
 
 def get_haml_loader(loader):
+
     if hasattr(loader, 'Loader'):
+
         baseclass = loader.Loader
+
     else:
+
         class baseclass(object):
+
             def __call__(self, template_name, template_dirs=None):
                 return self.load_template_source(template_name, template_dirs)
 
@@ -35,19 +42,24 @@ def get_haml_loader(loader):
                 return loader.load_template_source(*args, **kwargs)
 
     class Loader(baseclass):
+
         def load_template_source(self, template_name, *args, **kwargs):
             name, _extension = os.path.splitext(template_name)
-            # os.path.splitext always returns a period at the start of extension
+            # os.path.splitext always returns a period at
+            # the start of extension
             extension = _extension.lstrip('.')
 
-            # HACK, should just create new template loader or configuration to try and resolve html to hamlpy's
+            # HACK, should just create new template loader or
+            # configuration to try and resolve html to hamlpy's
             if extension in ['html']:
                 extension = 'hamlpy'
 
             if extension in hamlpy.VALID_EXTENSIONS:
                 try:
-                    haml_source, template_path = super(Loader, self).load_template_source(
-                        self._generate_template_name(name, extension), *args, **kwargs
+                    haml_source, template_path = super(
+                        Loader, self).load_template_source(
+                        self._generate_template_name(
+                            name, extension), *args, **kwargs
                     )
                 except TemplateDoesNotExist:
                     pass
@@ -68,7 +80,7 @@ def get_haml_loader(loader):
 
 
 haml_loaders = dict((name, get_haml_loader(loader))
-        for (name, loader) in get_django_template_loaders())
+                    for (name, loader) in get_django_template_loaders())
 
 if _django_available:
     HamlPyFilesystemLoader = get_haml_loader(filesystem)
